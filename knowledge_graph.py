@@ -6,52 +6,49 @@ import panel as pn
 # Initialize HoloViews with Bokeh backend
 hv.extension('bokeh')
 
+def create_knowledge_graph():
+    """
+    Creates an interactive knowledge graph with expandable/collapsible nodes.
 
-def create_expandable_graph():
+    Returns:
+        hv.DynamicMap: The interactive graph visualization.
+    """
 
-   # Initial graph with base nodes
+    # Create a sample graph
     G = nx.Graph()
+    G.add_nodes_from(['A', 'B', 'C', 'D', 'E'])
+    G.add_edges_from([('A', 'B'), ('A', 'C'), ('B', 'D'), ('C', 'E')])
 
-  # Add initial nodes and edges
-  # Start with just A and B visible
-    G.add_node('A', visible=True)
-    G.add_node('B', visible=True)
-    G.add_edge('A', 'B', relation='uses', visible=True)
+    # Define node visibility (initially all visible)
+    nx.set_node_attributes(G, {node: True for node in G.nodes()}, 'visible')
 
-  # Add hidden nodes and edges
-    G.add_node('D', visible=False)
-    G.add_node('1', visible=False)
-    G.add_node('2', visible=False)
-    G.add_edge('B', 'D', relation='detects', visible=False)
-    G.add_edge('D', '1', relation='mitigates', visible=False)
-    G.add_edge('D', '2', relation='mitigates', visible=False)
+    def update_graph(node_name, x=None, y=None):
+        """
+        Toggles the visibility of a node and its neighbors.
 
-  # Handle right-click events using selection
-    def handle_selection(event):
-        if event.element and event.element.node_renderer.data['name'] == 'B':
-            G.nodes['D']['visible'] = not G.nodes['D']['visible']
-            G['B']['D']['visible'] = not G['B']['D']['visible']
-        elif event.element and event.element.node_renderer.data['name'] == 'D':
-            G.nodes['1']['visible'] = not G.nodes['1']['visible']
-            G.nodes['2']['visible'] = not G.nodes['2']['visible']
-            G['D']['1']['visible'] = not G['D']['1']['visible']
-            G['D']['2']['visible'] = not G['D']['2']['visible']
-        graph.source = G  # Update graph source with modified visibility
+        Args:
+            node_name (str): The name of the node to toggle.
+            x (optional): Not used in this case.
+            y (optional): Not used in this case.
+        """
+        G.nodes[node_name]['visible'] = not G.nodes[node_name]['visible'] 
+        for neighbor in G.neighbors(node_name):
+            G.nodes[neighbor]['visible'] = G.nodes[node_name]['visible']
 
-    # Create a dynamic graph that updates on selection
+    # Create a dynamic graph that updates on node selection
     graph = hv.DynamicMap(
-        lambda graph: hv.Graph.from_networkx(graph, nx.spring_layout),
-        streams=[hv.streams.PointerXY(source=graph)]  # Use the defined graph here
+        update_graph,  # Include x and y arguments with default values
+        streams=[hv.streams.Tap()]
     )
 
     # Style the graph
     graph.opts(
         opts.Graph(
             tools=['tap', 'box_select'],
-            node_size=30,
-            node_color='blue',
+            node_size=20,
+            node_color='lightblue',
             edge_color='gray',
-            width=800,
+            width=600,
             height=400,
             xaxis=None,
             yaxis=None,
@@ -61,20 +58,22 @@ def create_expandable_graph():
         )
     )
 
-    # Connect selection events to handle_selection function
-    graph.events('selection').subscribe(handle_selection)
+    # Connect tap events to the update function
+    graph.events('tap').adjoin(hv.streams.Stream.from_callback(
+        lambda x: update_graph(x['x0']),
+        streams=[graph.tap]
+    ))
 
     return graph
 
-
 # Create and display the graph
-expandable_graph = create_expandable_graph()
+knowledge_graph = create_knowledge_graph()
 
 # Create a Panel app
 app = pn.Column(
-  pn.pane.Markdown("# Interactive Knowledge Graph"),
-  pn.pane.Markdown("Right-click on nodes to expand/collapse"),
-  expandable_graph
+    pn.pane.Markdown("# Interactive Knowledge Graph"),
+    pn.pane.Markdown("Click on nodes to expand/collapse"),
+    knowledge_graph
 )
 
 # Show the app
