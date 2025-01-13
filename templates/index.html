@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ogma Graph Visualization</title>
+  <script src="https://cdn.linkurious.com/ogma/latest/ogma.min.js"></script>
+  <style>
+    #graph-container {
+      width: 100%;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="graph-container"></div>
+  <script>
+    // Initialize Ogma
+    const ogma = new Ogma({ container: 'graph-container' });
+
+    // Fetch graph data from the backend
+    fetch('/graph-data')
+      .then((response) => response.json())
+      .then((data) => {
+        // Load nodes and edges into Ogma
+        ogma.setGraph({
+          nodes: data.nodes.map(node => ({
+            id: node.id,
+            attributes: {
+              label: node.label,
+              group: node.group
+            }
+          })),
+          edges: data.edges.map(edge => ({
+            source: edge.source,
+            target: edge.target
+          }))
+        });
+
+        // Enable visual grouping
+        ogma.styles.setRule({
+          node: {
+            color: node => ({
+              "1": '#1f78b4',
+              "2": '#33a02c',
+              "3": '#e31a1c',
+              "4": '#ff7f00'
+            }[node.attributes.group]),
+            size: 10
+          },
+          edge: {
+            color: '#bbbbbb'
+          }
+        });
+      });
+
+    // Example of adding interactivity for expand/collapse
+    ogma.events.onNodeClick((event) => {
+      const clickedNodeId = event.target.getId();
+      console.log('Clicked node ID:', clickedNodeId);
+
+      // Expand/collapse logic goes here
+    });
+  </script>
+</body>
+</html>
